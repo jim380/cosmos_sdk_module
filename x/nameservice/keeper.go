@@ -9,10 +9,14 @@ import (
 // Keeper - handlers sets/gets of custom variables for your module
 type Keeper struct {
 	coinKeeper bank.Keeper
-	namesStoreKey  sdk.StoreKey // The (unexposed) key used to access the store from the Context.
-	ownersStoreKey sdk.StoreKey // The (unexposed) key used to access the store from the Context.
-	pricesStoreKey sdk.StoreKey // The (unexposed) key used to access the store from the Context.
-	cdc *codec.Codec // The wire codec for binary encoding/decoding.
+	// stores the value string that the name points to
+	namesStoreKey  sdk.StoreKey
+	// contains the current owner of this name
+	ownersStoreKey sdk.StoreKey
+	// contains the price that the current owner paid
+	pricesStoreKey sdk.StoreKey
+	// pointer to the codec that is used by Amino to encode and decode binary structs
+	cdc *codec.Codec
 }
 
 func NewKeeper(coinKeeper bank.Keeper, namesStoreKey sdk.StoreKey, ownersStoreKey sdk.StoreKey, priceStoreKey sdk.StoreKey, cdc *codec.Codec) Keeper {
@@ -25,40 +29,40 @@ func NewKeeper(coinKeeper bank.Keeper, namesStoreKey sdk.StoreKey, ownersStoreKe
 	}
 }
 
-// GetTrend - returns the current cool trend
+// returns the string that the name resolves to
 func (k Keeper) ResolveName(ctx sdk.Context, name string) string {
 	store := ctx.KVStore(k.namesStoreKey)
 	bz := store.Get([]byte(name))
 	return string(bz)
 }
 
-// GetTrend - returns the current cool trend
+// sets the string that a name resolves to.
 func (k Keeper) SetName(ctx sdk.Context, name string, value string) {
 	store := ctx.KVStore(k.namesStoreKey)
 	store.Set([]byte(name), []byte(value))
 }
 
-// HasOwner - returns whether or not the name already has an owner
+// returns whether or not the name already has an owner
 func (k Keeper) HasOwner(ctx sdk.Context, name string) bool {
 	store := ctx.KVStore(k.ownersStoreKey)
 	bz := store.Get([]byte(name))
 	return bz != nil
 }
 
-// GetOwner - get the current owner of a name
+// gets the current owner of a name
 func (k Keeper) GetOwner(ctx sdk.Context, name string) sdk.AccAddress {
 	store := ctx.KVStore(k.ownersStoreKey)
 	bz := store.Get([]byte(name))
 	return bz
 }
 
-// SetOwner - sets the current owner of a name
+// sets the current owner of a name
 func (k Keeper) SetOwner(ctx sdk.Context, name string, owner sdk.AccAddress) {
 	store := ctx.KVStore(k.ownersStoreKey)
 	store.Set([]byte(name), owner)
 }
 
-// GetPrice - gets the current price of a name.  If price doesn't exist yet, set to 1steak.
+// gets the current price of a name. If price doesn't exist yet, sets to 1steak.
 func (k Keeper) GetPrice(ctx sdk.Context, name string) sdk.Coins {
 	if !k.HasOwner(ctx, name) {
 		return sdk.Coins{sdk.NewInt64Coin("CypherCore Coin", 1)}
@@ -70,7 +74,7 @@ func (k Keeper) GetPrice(ctx sdk.Context, name string) sdk.Coins {
 	return price
 }
 
-// SetPrice - sets the current price of a name
+// sets the current price of a name
 func (k Keeper) SetPrice(ctx sdk.Context, name string, price sdk.Coins) {
 	store := ctx.KVStore(k.pricesStoreKey)
 	store.Set([]byte(name), k.cdc.MustMarshalBinary(price))
